@@ -1,0 +1,23 @@
+#!/bin/bash
+
+folder="$1"
+
+echo "Starting batch conversion in folder: $folder"
+
+getAllFilesAndFolders() {
+    current_folder="$1"
+    for entry in "$current_folder"/*; do
+        if [ -d "$entry" ]; then
+            getAllFilesAndFolders "$entry"
+        elif [ -f "$entry" ]; then
+            echo "Processing file: $entry"
+
+            if [[ "${entry,,}" == *.mp4 || "${entry,,}" == *.avi || "${entry,,}" == *.mov || "${entry,,}" == *.mkv || "${entry,,}" == *.webm || "${entry,,}" == *.wmv || "${entry,,}" == *.mpeg || "${entry,,}" == *.mpg ]]; then
+                echo "Processing video file: $entry"
+                converter "$entry"
+            fi
+        fi
+    done
+}
+    
+getAllFilesAndFolders "$folder"

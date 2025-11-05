@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# Usage: ./cleanup_folder.sh /path/to/folder
+
+cleanup_folder() {
+    local FOLDER="$1"
+
+    echo "Listing all files in $FOLDER:"
+    find "$FOLDER" -type f
+
+    echo "Deleting files with .delete_me in the name..."
+    find "$FOLDER" -type f -name '*.delete_me*' -exec rm -v {} \;
+
+    echo "Renaming files ending with -ac2.mp4..."
+    find "$FOLDER" -type f -name '*-ac2.mp4' | while read -r file; do
+        newname="${file/-ac2.mp4/.mp4}"
+        if [ "$file" != "$newname" ]; then
+            mv -v "$file" "$newname"
+        fi
+    done
+
+    # Recursively process subfolders
+    find "$FOLDER" -mindepth 1 -type d | while read -r subdir; do
+        cleanup_folder "$subdir"
+    done
+}
+
+# Entry point
+FOLDER="${1:-.}"
+cleanup_folder "$FOLDER"
+
+echo "Done."

@@ -1,0 +1,39 @@
+#!/bin/bash
+
+full_filename="$1"
+filename="${full_filename##*/}"
+extension="${filename##*.}"
+dirpath=$(dirname "$full_filename")
+output="$dirpath/${filename%.*}-ac2.mp4"
+
+video_codec=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$full_filename")
+audio_codec=$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$full_filename")
+audio_channels=$(ffprobe -v error -select_streams a:0 -show_entries stream=channels -of default=nw=1:nk=1 "$full_filename")
+
+echo "Video codec: $video_codec"
+echo "Audio codec: $audio_codec"
+echo "Audio channels: $audio_channels"
+
+echo "Full filename: $full_filename"
+echo "File: $filename"
+echo "Extension: $extension"
+echo "Output: $output"
+
+# Determine if conversion is needed
+if [[ "$video_codec" == "h264" && "$audio_codec" == "aac" && "$audio_channels" -le 2 ]]; then
+    echo "✅ File already in H.264 + AAC (<=2ch). Skipping conversion."
+    exit 0
+fi
+
+echo "🎬 Converting..."
+ffmpeg -y -err_detect ignore_err -fflags +discardcorrupt -i "$full_filename" \
+-map 0 -pix_fmt yuv420p -c:v h264_nvenc -preset fast -b:v 8M \
+-c:a aac -ac 2 -b:a 192k "$output"
+
+# Check if FFmpeg succeeded
+if [[ $? -eq 0 ]]; then
+    echo "✅ Conversion successful. Marking original file for deletion..."
+    mv "$full_filename" "$full_filename.delete_me"
+else
+    echo "❌ Conversion failed. Original file kept."
+fi
