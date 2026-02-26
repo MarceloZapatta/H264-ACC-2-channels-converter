@@ -5,9 +5,6 @@
 cleanup_folder() {
     local FOLDER="$1"
 
-    echo "Listing all files in $FOLDER:"
-    find "$FOLDER" -type f
-
     echo "Deleting files with .delete_me in the name..."
     find "$FOLDER" -type f -name '*.delete_me*' -exec rm -v {} \;
 
