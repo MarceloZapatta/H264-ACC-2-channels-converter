@@ -1,10 +1,24 @@
 #!/bin/bash
 
-full_filename="$1"
+full_filename=$(realpath "$1")
 filename="${full_filename##*/}"
 extension="${filename##*.}"
 dirpath=$(dirname "$full_filename")
-output="$dirpath/${filename%.*}-ac2.mp4"
+output="$dirpath/${filename%.*}.mp4"
+
+echo "$HOME"
+
+app_path="$HOME/h264-converter"
+
+# Check if file was already converted
+converted_list="$app_path/files-converted.txt"
+
+mkdir -p "$app_path"
+
+if [[ -f "$converted_list" ]] && grep -Fxq "$full_filename" "$converted_list"; then
+    echo "✅ File already checked/converted (found in cache). Skipping."
+    exit 0
+fi
 
 video_codec=$(ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$full_filename")
 audio_codec=$(ffprobe -v error -select_streams a:0 -show_entries stream=codec_name -of default=nw=1:nk=1 "$full_filename")
@@ -19,21 +33,30 @@ echo "File: $filename"
 echo "Extension: $extension"
 echo "Output: $output"
 
+
+
 # Determine if conversion is needed
 if [[ "$video_codec" == "h264" && "$audio_codec" == "aac" && "$audio_channels" -le 2 ]]; then
     echo "✅ File already in H.264 + AAC (<=2ch). Skipping conversion."
+    # Store filepath in converted list since it's already in the correct format
+    echo "$full_filename" >> "$converted_list"
     exit 0
 fi
 
 echo "🎬 Converting..."
-ffmpeg -y -err_detect ignore_err -fflags +discardcorrupt -i "$full_filename" \
--map 0 -pix_fmt yuv420p -c:v h264_nvenc -preset fast -b:v 8M \
+ffmpeg -y -err_detect ignore_err -fflags +discardcorrupt \
+-hwaccel cuda -hwaccel_output_format cuda \
+-i "$full_filename" \
+-vf "scale_cuda=format=nv12" \
+-c:v h264_nvenc -preset fast -b:v 8M \
 -c:a aac -ac 2 -b:a 192k "$output"
 
 # Check if FFmpeg succeeded
 if [[ $? -eq 0 ]]; then
     echo "✅ Conversion successful. Marking original file for deletion..."
     mv "$full_filename" "$full_filename.delete_me"
+    # Store filepath in converted list
+    echo "$full_filename" >> "$converted_list"
 else
     echo "❌ Conversion failed. Original file kept."
 fi

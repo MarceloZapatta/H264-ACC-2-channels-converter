@@ -1,0 +1,36 @@
+#!/bin/bash
+
+extractSubtitle() {
+    if [ -d "$1" ]; then
+        for file in "$1"/*; do
+            extractSubtitle "$file"
+        done
+        return
+    fi
+
+    input="$1"
+
+    echo "Processing file: $input"
+
+    searchIndex=$(
+    ffprobe -v quiet -show_entries stream=index,codec_type,codec_name:stream_tags=language,title \
+        -of default=noprint_wrappers=1 "$input" \
+    | grep -B4 "Portuguese (Brazil)" \
+    | grep "^index=" \
+    | awk -F= '{print $2}'
+    )
+
+    echo "The subtitle stream index for Portuguese (Brazil) is: $searchIndex"
+
+    # Get filename without extension
+    baseName="${input%.*}"
+
+    # Output filename: same name + .pob.srt
+    outputFile="${baseName}.pob.srt"
+
+    echo "Extracting to: $outputFile"
+
+    mkvextract tracks "$input" "$searchIndex:$outputFile"
+}
+
+extractSubtitle "$1"
