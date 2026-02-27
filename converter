@@ -54,9 +54,10 @@ ffmpeg -y -err_detect ignore_err -fflags +discardcorrupt \
 # Check if FFmpeg succeeded
 if [[ $? -eq 0 ]]; then
     echo "✅ Conversion successful. Marking original file for deletion..."
-    mv "$full_filename" "$full_filename.delete_me"
+    rm "$full_filename"
     # Store filepath in converted list
     echo "$full_filename" >> "$converted_list"
+    echo "$output" >> "$converted_list"
 else
     echo "❌ Conversion failed. Original file kept."
 fi
